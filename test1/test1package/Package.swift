@@ -24,6 +24,8 @@ let package = Package(
     ),
   ],
   targets: [
+    // TODO: checksum?
+
     .target(
       name: "test1package",
       dependencies: [

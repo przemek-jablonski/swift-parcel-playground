@@ -1,0 +1,262 @@
+FASTLANE_RUN_UUID = "fastlane-#{SecureRandom.uuid()}"
+
+before_all do |lane, options|
+  ensure_bundle_exec
+  print("FASTLANE_RUN_UUID", FASTLANE_RUN_UUID)
+  print("Options", options.sort)
+  print("ENV", ENV['CI'] ? "-" : ENV.sort)
+  skip_xcode_validations
+  xcodes(
+  version: '16.2.0',
+  select_for_current_build_only: true,
+)
+end
+
+after_all do |lane, options|
+  cleanup()
+end
+
+error do |lane, exception|
+  cleanup()
+end
+
+private_lane :cleanup do |options|
+  remove_temporary_directory
+end
+
+desc "Build binary for a given git URL and tag"
+lane :build_binary do |options|
+  # git_url argument is required
+  git_url = options[:git_url]
+  print("git_url", git_url)
+  UI.user_error!("git_url: missing.") unless git_url
+
+  # tag argument is required
+  tag = options[:tag]
+  print("tag", tag)
+  UI.user_error!("tag: missing.") unless tag
+
+  # repo_owner is required
+  repo_owner = extract_repo_owner(git_url)
+  print("repo_owner", repo_owner)
+  UI.user_error!("repo_owner: Could not extract repository owner from git URL: #{git_url}") unless repo_owner
+  
+  # repo_name is required
+  repo_name = extract_repo_name(git_url)
+  print("repo_name", repo_name)
+  UI.user_error!("repo_name: Could not extract repository name from git URL: #{git_url}") unless repo_name
+
+  temp_dir = create_temporary_directory
+  print("Created temporary directory", "#{Dir.pwd}/#{temp_dir}")
+
+  # sh("git clone #{git_url} --verbose #{temp_dir}/checkout")
+  
+  sh("pwd")
+  # sh("mkdir checkout")
+  sh("cp -r temp_dir_fastlane-2d12de14-bafd-45a5-b86a-d3ef313d1498/checkout #{temp_dir}/checkout")
+  
+  in_directory("#{temp_dir}/checkout") do
+    _ = sh("git tag -n --sort=-v:refname")
+    # latest_tag = all_tags.strip
+    # print("latest_tag", latest_tag)
+    # print("tag", tag)
+    
+    # # Verify that requested tag matches the latest tag
+    # UI.user_error!("Requested tag '#{tag}' does not match latest tag '#{latest_tag}'") unless tag == latest_tag
+    
+    sh("git checkout #{tag}")
+    sh("pwd")
+    sh("ls -al")
+
+archive = %Q(
+  xcodebuild archive \
+    -project "ComposableArchitecture.xcodeproj" \
+    -scheme "ComposableArchitecture" \
+    -configuration "Release" \
+    -destination "generic/platform=iOS" \
+    -archivePath "./build/ios_devices.xcarchive" \
+    SKIP_INSTALL=NO \
+    BUILD_LIBRARY_FOR_DISTRIBUTION=YES
+)
+
+# sh(archive)
+
+    # spm(
+    #   #command: "generate-xcodeproj", 
+    #   command: "build",
+    #   package_path:"#{Dir.pwd}",
+    #   verbose: true
+    #   )
+
+
+    # # Setup build variables
+    # workspace = "#{Dir.pwd}/ComposableArchitecture.xcworkspace"
+    # scheme = "ComposableArchitecture"
+    # archive_path = "#{Dir.pwd}/../archive/archives/ComposableArchitecture.xcarchive"
+    # log_dir = "#{ENV['HOME']}/Library/Logs/fastlane/xcbuild/#{Time.now.strftime('%Y-%m-%d')}/#{Process.pid}"
+    # build_settings = {
+    #   'SKIP_INSTALL' => 'NO',
+    #   'BUILD_LIBRARY_FOR_DISTRIBUTION' => 'YES'
+    # }
+    # destinations = ["generic/platform=iOS"]
+
+    # # Ensure log directory exists
+    # FileUtils.mkdir_p(log_dir)
+    # log_path = "#{log_dir}/xcodebuild.log"
+
+    
+
+      # # Build xcodebuild command using heredoc for better readability
+      # command = <<~COMMAND
+      #   set -o pipefail &&
+      #   xcodebuild archive
+      #     -workspace "#{workspace}"
+      #     -scheme "#{scheme}"
+      #     #{build_settings.map { |k,v| "#{k}=#{v}" }.join(" ")}
+      #     #{destinations.map { |d| "-destination \"#{d}\"" }.join(" ")}
+      #     -archivePath "#{archive_path}"
+      #     | tee "#{log_path}"
+      #     | xcpretty --color --simple
+      # COMMAND
+
+      # # Execute the command
+      # sh(command)
+
+    ##### HAS DEDICATED LOGIC
+    # create_xcframework(
+    #  workspace: "#{Dir.pwd}/ComposableArchitecture.xcworkspace",
+    #  scheme: 'ComposableArchitecture',
+    #  #product_name: 'Sample', # optional if scheme doesnt match the name of your framework
+    #  destinations: ["iOS", "maccatalyst", "tvOS", "watchOS", "macOS"],
+    #  #destinations: ["iOS"],
+    #  include_dSYMs: true,
+    #  include_BCSymbolMaps: true,
+    #  include_debug_symbols: true,
+    #  enable_bitcode: true,
+    #  xcframework_output_directory: "#{Dir.pwd}/../xcframework",
+    #  xcargs: 'RESILIENT_LIBRARIES=1',
+    #  override_xcargs: false,
+    #  remove_xcarchives: false
+    # )
+    # 
+    
+    shell_setup = "set -o pipefail"
+
+  #	swift build \
+	#-q \
+	#-c release \
+	#--target ComposableArchitecture \
+	#-Xswiftc -emit-module-interface \
+	#-Xswiftc -enable-library-evolution
+  
+  sh("touch #{Dir.pwd}/logs/xcodebuild.log")
+
+    archive = %Q(xcodebuild \
+-workspace "#{Dir.pwd}/ComposableArchitecture.xcworkspace" \
+-scheme "ComposableArchitecture" \
+SKIP_INSTALL=NO \
+BUILD_LIBRARY_FOR_DISTRIBUTION=YES \
+OTHER_CFLAGS="-fembed-bitcode -DRESILIENT_LIBRARIES -RESILIENT_LIBRARIES -RESILIENT_LIBRARIES=YES" \
+OTHER_SWIFT_FLAGS="-Xswiftc -DRESILIENT_LIBRARIES -Xswiftc -emit-module-interface -Xswiftc -enable-library-evolution" \
+BITCODE_GENERATION_MODE="bitcode" \
+RESILIENT_LIBRARIES=YES \
+ENABLE_BITCODE=YES \
+-destination "generic/platform=iOS" \
+-archivePath "#{Dir.pwd}/xcframework/0_ComposableArchitecture.xcarchive" \
+archive \
+| tee #{Dir.pwd}/logs/xcodebuild.log \
+| xcpretty --color --simple
+)
+
+    sh("#{shell_setup} && #{archive}")
+  end
+  
+  # Execute git operations in the repo directory
+  # in_directory(repo_name) do
+  #   sh("git clone #{git_url} --verbose --depth 1 --branch #{version} --single-branch")
+  #   sh("git checkout #{version} --verbose")
+    
+  #   # Build the project (temporarily replaced with echo)
+  #   sh("echo 'Building #{repo_name} version #{version}...'")
+  # end
+end
+
+def in_directory(directory)
+  UI.success "Changing directory to '#{directory}'"
+  
+  unless Dir.exist?(directory)
+    UI.important "Directory '#{directory}' does not exist, creating it"
+    FileUtils.mkdir_p(directory)
+  end
+  
+  Dir.chdir(directory) do
+    print("pwd", Dir.pwd)
+    yield if block_given?
+  end
+  
+  print("pwd (after)", Dir.pwd)
+end
+
+def extract_repo_owner(git_url)
+  if git_url.start_with?("https://")
+    # Handle HTTPS URLs (https://github.com/owner/repo.git)
+    git_url.split("/")[-2]
+  else
+    # Handle SSH URLs (git@github.com:owner/repo.git)
+    git_url.split(":")[-1].split("/")[0]
+  end
+end
+
+def extract_repo_name(git_url)
+  if git_url.start_with?("https://")
+    # Handle HTTPS URLs (https://github.com/owner/repo.git)
+    git_url.split("/")[-1].sub(".git", "")
+  else
+    # Handle SSH URLs (git@github.com:owner/repo.git)
+    git_url.split(":")[-1].split("/")[1].sub(".git", "")
+  end
+end
+
+def print(key, value)
+  UI.success "#{key}:"
+  if value.is_a?(Array)
+    value.sort.each { |v| UI.message "\t#{v}" }
+  else
+    UI.message "\t#{value}"
+  end
+end
+
+def create_temporary_directory
+  temp_dir = "temp_dir_#{FASTLANE_RUN_UUID}"
+  UI.message "Creating temporary directory"
+  print("temp_dir", temp_dir)
+
+  Dir.mkdir(temp_dir)
+  print("ls -al", Dir.entries(Dir.pwd))
+  
+  return temp_dir
+end
+
+def remove_temporary_directory
+  UI.message "Creating temporary directory"
+  temp_dir = "temp_dir_#{FASTLANE_RUN_UUID}"
+  print("temp_dir", temp_dir)
+
+  # if Dir.exist?(temp_dir)
+  #   UI.success "Removing temporary directory: #{temp_dir}"
+  #   FileUtils.rm_rf(temp_dir)
+  # else
+  #   UI.message "Temporary directory does not exist: #{temp_dir}"
+  # end
+  # print("ls -al", Dir.entries(Dir.pwd))
+end
+
+def skip_xcode_validations
+  # Skip package plugin validation
+  sh("defaults write com.apple.dt.Xcode IDESkipPackagePluginFingerprintValidatation -bool YES")
+  
+  # Skip macro validation
+  sh("defaults write com.apple.dt.Xcode IDESkipMacroValidation -bool YES")
+  
+  UI.success "Disabled Xcode plugin and macro validation"
+end

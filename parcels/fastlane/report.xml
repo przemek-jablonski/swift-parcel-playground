@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites>
+  <testsuite name="fastlane.lanes">
+    
+    
+    
+      
+      <testcase classname="fastlane.lanes" name="0: ensure_bundle_exec" time="0.000218">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="1: Switch to create_temporary_directory lane" time="8.5e-05">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="2: git clone git@github.com:pointfreeco/swift-composable-architecture.git --verbose" time="0.02117">
+        
+          <failure message="/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/gems/fastlane-2.220.0/fastlane/lib/fastlane/actions/actions_helper.rb:67:in `execute_action&apos;&#10;/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/gems/fastlane-2.220.0/fastlane/lib/fastlane/fast_file.rb:222:in `sh&apos;&#10;/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/gems/fastlane-2.220.0/fastlane/lib/fastlane/fast_file.rb:216:in `sh&apos;&#10;Fastfile:61:in `block in parsing_binding&apos;&#10;/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/gems/fastlane-2.220.0/fastlane/lib/fastlane/lane.rb:41:in `call&apos;&#10;/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/gems/fastlane-2.220.0/fastlane/lib/fastlane/runner.rb:49:in `block in execute&apos;&#10;/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/gems/fastlane-2.220.0/fastlane/lib/fastlane/runner.rb:45:in `chdir&apos;&#10;/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/gems/fastlane-2.220.0/fastlane/lib/fastlane/runner.rb:45:in `execute&apos;&#10;/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/gems/fastlane-2.220.0/fastlane/lib/fastlane/lane_manager.rb:46:in `cruise_lane&apos;&#10;/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/gems/fastlane-2.220.0/fastlane/lib/fastlane/command_line_handler.rb:34:in `handle&apos;&#10;/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/gems/fastlane-2.220.0/fastlane/lib/fastlane/commands_generator.rb:110:in `block (2 levels) in run&apos;&#10;/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/gems/commander-4.6.0/lib/commander/command.rb:187:in `call&apos;&#10;/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/gems/commander-4.6.0/lib/commander/command.rb:157:in `run&apos;&#10;/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/gems/commander-4.6.0/lib/commander/runner.rb:444:in `run_active_command&apos;&#10;/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/gems/fastlane-2.220.0/fastlane_core/lib/fastlane_core/ui/fastlane_runner.rb:124:in `run!&apos;&#10;/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/gems/commander-4.6.0/lib/commander/delegates.rb:18:in `run!&apos;&#10;/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/gems/fastlane-2.220.0/fastlane/lib/fastlane/commands_generator.rb:363:in `run&apos;&#10;/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/gems/fastlane-2.220.0/fastlane/lib/fastlane/commands_generator.rb:43:in `start&apos;&#10;/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/gems/fastlane-2.220.0/fastlane/lib/fastlane/cli_tools_distributor.rb:123:in `take_off&apos;&#10;/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/gems/fastlane-2.220.0/bin/fastlane:23:in `&lt;top (required)&gt;&apos;&#10;/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/bin/fastlane:23:in `load&apos;&#10;/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/bin/fastlane:23:in `&lt;main&gt;&apos;&#10;&#10;Exit status of command &apos;git clone git@github.com:pointfreeco/swift-composable-architecture.git --verbose&apos; was 128 instead of 0.&#10;fatal: destination path &apos;swift-composable-architecture&apos; already exists and is not an empty directory.&#10;" />
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="3: Switch to cleanup lane" time="0.000102">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="4: Switch to remove_temporary_directory lane" time="6.7e-05">
+        
+      </testcase>
+    
+  </testsuite>
+</testsuites>
