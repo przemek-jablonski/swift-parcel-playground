@@ -118,7 +118,6 @@ lane :build_swift_composable_architecture do |options|
     describe "Creating XCFramework from archived slices"
     sh("ls -al #{archives_dir}")
 
-    # Find all .xcarchive files in archives_dir for use in xcodebuild_create_xcframework
     archives = Dir.glob("#{archives_dir}/*.xcarchive")
     frameworks = archives.map { |archive| "#{archive}/Products/Library/Frameworks/#{scheme}.framework" }
 
