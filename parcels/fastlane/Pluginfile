@@ -2,4 +2,4 @@
 #
 # Ensure this file is checked in to source control!
 
-gem 'fastlane-plugin-create_xcframework'
+gem 'fastlane-plugin-create_xcframework', git: "https://github.com/bielikb/fastlane-plugin-create_xcframework.git", ref: '93ab56ddf7ede089f91f1e61f34984503a9d1557'
