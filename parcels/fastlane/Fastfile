@@ -27,103 +27,6 @@ private_lane :cleanup do |options|
   remove_temporary_directory
 end
 
-# lane :build_swift_composable_architecture_test do |options|
-#   sh("cd temp_dir_fastlane-4e1b3a3e-675e-46e0-9331-733a3bea5c84")
-
-#   # tag argument is required
-#   tag = options[:tag]
-#   print("tag", tag)
-#   UI.user_error!("tag: missing.") unless tag # TODO: more descriptive error
-
-#   in_directory("#{Dir.pwd}/temp_dir_fastlane-4e1b3a3e-675e-46e0-9331-733a3bea5c84/checkout") do
-#     # Checkout to requested tag
-#     _ = sh("git tag -n --sort=-v:refname")
-#     sh("git checkout #{tag}")
-
-#     # Change xcode version to one used by the project authors
-#     xcodes(version: '15.4.0', select_for_current_build_only: true)
-
-#     target = "ComposableArchitecture"
-
-#     # Query available build configurations, SDKs and destinations
-#     # sh(<<~LIST_BUILD_CONFIG)
-#     #   xcodebuild archive \
-#     #     -workspace "ComposableArchitecture.xcworkspace" \
-#     #     -list
-#     # LIST_BUILD_CONFIG
-    
-#     # -showsdks \
-#     #     -showdestinations \
-#     #     -showBuildSettings \
-#     #     -configuration Release \
-#     #     -skipPackagePluginValidation \
-#     #     -skipMacroValidation
-
-#     # 1. Archive iOS device slice
-#     # sh(<<~ARCHIVE_IOS)
-#     #   xcodebuild archive \
-#     #     -workspace "ComposableArchitecture.xcworkspace" \
-#     #     -scheme #{target} \
-#     #     -configuration Release \
-#     #     -destination "generic/platform=iOS" \
-#     #     -archivePath "./.generated/archives/ios_devices.xcarchive" \
-#     #     -parallelizeTargets \
-#     #     -skipPackagePluginValidation \
-#     #     -skipMacroValidation \
-#     #     SKIP_INSTALL=NO \
-#     #     BUILD_LIBRARY_FOR_DISTRIBUTION=YES \   
-#     # ARCHIVE_IOS
-#     # #-packagePath .
-
-#     # # # 2. Archive iOS simulator slice
-#     # sh(<<~ARCHIVE_SIMULATOR)
-#     #   xcodebuild archive \
-#     #     -workspace "ComposableArchitecture.xcworkspace" \
-#     #     -scheme #{target} \
-#     #     -configuration Release \
-#     #     -destination "generic/platform=iOS Simulator" \
-#     #     -archivePath "./.generated/archives/ios_simulators.xcarchive" \
-#     #     -parallelizeTargets \
-#     #     -skipPackagePluginValidation \
-#     #     -skipMacroValidation \
-#     #     SKIP_INSTALL=NO \
-#     #     BUILD_LIBRARY_FOR_DISTRIBUTION=YES \   
-#     # ARCHIVE_SIMULATOR
-#     # # #-packagePath .
-
-#     # # 3. Create XCFramework from the archives
-#     sh(<<~CREATE_XCF)
-#       xcodebuild -create-xcframework \
-#         -archive ./.generated/archives/ios_devices.xcarchive \
-#         -archive ./.generated/archives/ios_simulators.xcarchive \
-#         -output ./.generated/xcframeworks/ComposableArchitecture.xcframework
-#     CREATE_XCF
-#     # -framework ./.generated/archives/ios_devices.xcarchive/Products/Library/Frameworks/ComposableArchitecture.framework \
-#     # -framework ./.generated/archives/ios_simulators.xcarchive/Products/Library/Frameworks/ComposableArchitecture.framework \
-#     # 
-#     #
-    
-#     # sh("xcodebuild -workspace ComposableArchitecture.xcworkspace -list")
-
-#     #    create_xcframework(
-#     #  workspace: "#{Dir.pwd}/ComposableArchitecture.xcworkspace",
-#     #  scheme: 'ComposableArchitecture',
-#     #  #product_name: 'Sample', # optional if scheme doesnt match the name of your framework
-#     # #  destinations: ["iOS", "maccatalyst", "tvOS", "watchOS", "macOS"],
-#     # #  destinations: ["iOS"],
-#     #  destinations: ["macOS"],
-#     #  include_dSYMs: true,
-#     #  include_BCSymbolMaps: true,
-#     #  include_debug_symbols: true,
-#     #  enable_bitcode: true,
-#     #  xcframework_output_directory: "#{Dir.pwd}/../xcframework",
-#     #  remove_xcarchives: false
-#     # )
-#   end
-# end
-# 
-#
-
 lane :build_swift_composable_architecture do |options|
   describe "Looking for the required git_url"
   git_url = "git@github.com:pointfreeco/swift-composable-architecture.git"
@@ -223,27 +126,378 @@ lane :build_swift_composable_architecture do |options|
       log_path: "#{logs_dir}/xcodebuild_create_xcframework.log",
       xcodebuild: xcodebuild_create_xcframework(frameworks: frameworks, archives: archives, output_path: "#{outputs_dir}/#{scheme}.xcframework")
     )
-
-
-
-
-    # sh(<<~BUILD_IOS)
-    # xcodebuild archive \
-    #   -workspace #{temp_dir}/checkout/ComposableArchitecture.xcworkspace \
-    #   -scheme ComposableArchitecture \
-    #   -configuration Release \
-    #   -destination "generic/platform=iOS" \
-    #   -archivePath "#{temp_dir}/archives/ios" \
-    #   -skipPackagePluginValidation \
-    #   -skipMacroValidation \
-    #   -parallelizeTargets \
-    #   -showBuildTimingSummary \
-    #   SKIP_INSTALL=NO \
-    #   BUILD_LIBRARY_FOR_DISTRIBUTION=YES
-    # BUILD_IOS
-    # -quiet \
-
   end
+end
+
+def in_directory(directory)
+  UI.message "Changing directory to #{directory}"
+  
+  unless Dir.exist?(directory)
+    describe "Directory does not exist, running mkdir"
+    FileUtils.mkdir_p(directory)
+    UI.success "Successfully created directory: #{directory}"
+  end
+  
+  Dir.chdir(directory) do
+    UI.message "Directory changed to #{directory}"
+    yield if block_given?
+  end
+
+  UI.message "Leaving directory scope: #{directory}"
+  UI.message "Returning to previous directory"
+end
+
+def extract_repo_owner(git_url)
+  UI.message "Extracting repository owner from URL `#{git_url}`"
+  if git_url.start_with?("https://")
+    # Handle HTTPS URLs (https://github.com/owner/repo.git)
+    git_url.split("/")[-2]
+  else
+    # Handle SSH URLs (git@github.com:owner/repo.git)
+    git_url.split(":")[-1].split("/")[0]
+  end
+end
+
+def extract_repo_name(git_url)
+  UI.message "Extracting repository name from URL `#{git_url}`"
+  if git_url.start_with?("https://")
+    # Handle HTTPS URLs (https://github.com/owner/repo.git)
+    git_url.split("/")[-1].sub(".git", "")
+  else
+    # Handle SSH URLs (git@github.com:owner/repo.git)
+    git_url.split(":")[-1].split("/")[1].sub(".git", "")
+  end
+end
+
+def print(key, value)
+  UI.success "#{key}:"
+  if value.is_a?(Array)
+    value.sort.each { |v| UI.message "\t#{v}" }
+  else
+    UI.message "\t#{value}"
+  end
+end
+
+def printMissingParameter(key, options = nil)
+  UI.error "`#{key}`"
+  UI.error "`#{key}` parameter is missing or failed to calculate. Either wasn't provided in lane's |options| or it's runtime calculation failed"
+  if options
+    UI.error "Parameter should be accessible from lane's |options|, but has not been found"
+    UI.message "Available options:"
+    options.sort.each { |v| UI.message "\t#{v}" }
+  else
+    UI.error "`#{key}` is a dynamic parameter that was supposed to be calculated succesfully on runtime"
+    UI.error "Double-check parameters and lane's flow to debug the issue"
+  end
+  UI.user_error! "`#{key}` parameter is missing or failed to calculate"
+end
+
+def create_temporary_directory
+  UI.message "Creating temporary directory"
+  temp_dir = "temp_dir_#{FASTLANE_RUN_UUID}"
+  
+  print("temp_dir", temp_dir)
+  Dir.mkdir(temp_dir)
+  Dir.mkdir("#{temp_dir}/checkout")
+  Dir.mkdir("#{temp_dir}/logs")
+  Dir.mkdir("#{temp_dir}/archives")
+  Dir.mkdir("#{temp_dir}/outputs")
+  temp_dir = "./#{temp_dir}"
+
+  UI.message "Directory created: #{temp_dir}"
+  
+  return temp_dir
+end
+
+def remove_temporary_directory
+  UI.message "Removing temporary directory"
+  temp_dir = "temp_dir_#{FASTLANE_RUN_UUID}"
+  print("temp_dir", temp_dir)
+
+  # if Dir.exist?(temp_dir)
+  #   UI.success "Removing temporary directory: #{temp_dir}"
+  #   FileUtils.rm_rf(temp_dir)
+  # else
+  #   UI.message "Temporary directory does not exist: #{temp_dir}"
+  # end
+  # print("ls -al", Dir.entries(Dir.pwd))
+end
+
+def configure_xcode_instance
+  UI.message "Configuring xcode validations"
+  sh("defaults write com.apple.dt.Xcode IDESkipPackagePluginFingerprintValidatation -bool YES")
+  sh("defaults write com.apple.dt.Xcode IDESkipMacroValidation -bool YES")
+  cpu_count = Etc.nprocessors
+  sh("defaults write com.apple.dt.xcodebuild PBXNumberOfParallelBuildSubtasks #{cpu_count}")
+  sh("defaults write com.apple.dt.xcodebuild IDEBuildOperationMaxNumberOfConcurrentCompileTasks #{cpu_count}")
+  sh("defaults write com.apple.dt.Xcode PBXNumberOfParallelBuildSubtasks #{cpu_count}")
+  sh("defaults write com.apple.dt.Xcode IDEBuildOperationMaxNumberOfConcurrentCompileTasks #{cpu_count}")
+end
+
+def regex_substitute(file_path:, regex:, substitute:)
+  UI.message "Substituting content in file: #{file_path}"
+  UI.message "Regex: #{regex}"
+  UI.message "Substitute: #{substitute}"
+  contents = File.read(file_path)
+  contents = contents.gsub(regex, substitute)
+  File.write(file_path, contents)
+  UI.message "File overwritten succesfully"
+end
+
+def execute_xcodebuild_with_logs(log_path:, xcodebuild:)
+  UI.message "Executing xcodebuild"
+  UI.message "Recording output to: #{log_path}"
+  sh("touch #{log_path}")
+  sh("set -o pipefail && #{xcodebuild.split.join(" ")} | tee #{log_path} | xcpretty --color --simple")
+end
+
+def xcodebuild_archive_package(workspace:, scheme:, destination:, archive_path:, xcargs: [])
+  args = xcargs.join(' ')
+  <<~CMD
+    xcodebuild archive \
+      -workspace #{workspace} \
+      -scheme #{scheme} \
+      -configuration Release \
+      -destination "#{destination}" \
+      -archivePath "#{archive_path}" \
+      -skipPackagePluginValidation \
+      -skipMacroValidation \
+      -parallelizeTargets \
+      -showBuildTimingSummary \
+      #{args}
+      SKIP_INSTALL=NO \
+      BUILD_LIBRARY_FOR_DISTRIBUTION=YES
+  CMD
+end
+
+def xcodebuild_create_xcframework(frameworks:, archives:, output_path:)
+  framework_args = frameworks.map { |fw| "-framework #{fw}" }.join("\n")
+  archive_args = archives.map { |ar| "-archive #{ar}" }.join("\n      ")
+  args = [framework_args, archive_args].reject(&:empty?).join("\n      ")
+  <<~CMD
+    xcodebuild -create-xcframework \
+      #{args}
+      -output #{output_path}
+  CMD
+end
+
+def xcodebuild_archive_slice(slice:, workspace:, scheme:, archives_dir:, logs_dir:)
+  normalized_slice = normalize_destination_name(slice)
+  UI.message normalized_slice
+  execute_xcodebuild_with_logs(
+    log_path: "#{logs_dir}/xcodebuild_archive_#{normalized_slice}.log",
+    xcodebuild: xcodebuild_archive_package(
+      workspace: workspace,
+      scheme: scheme,
+      destination: "generic/platform=#{slice}",
+      archive_path: "#{archives_dir}/#{normalized_slice}",
+      xcargs: []
+    )
+  )
+end
+
+def normalize_destination_name(str)
+  str.downcase.gsub(/[^a-z0-9]+/, '_').gsub(/^_+|_+$/, '')
+end
+
+def describe(step)
+  UI.important ""
+  UI.important step
+end
+
+
+
+## LEGACY _____________________________________________________________________
+
+
+# lane :build_swift_composable_architecture_test do |options|
+#   sh("cd temp_dir_fastlane-4e1b3a3e-675e-46e0-9331-733a3bea5c84")
+
+#   # tag argument is required
+#   tag = options[:tag]
+#   print("tag", tag)
+#   UI.user_error!("tag: missing.") unless tag # TODO: more descriptive error
+
+#   in_directory("#{Dir.pwd}/temp_dir_fastlane-4e1b3a3e-675e-46e0-9331-733a3bea5c84/checkout") do
+#     # Checkout to requested tag
+#     _ = sh("git tag -n --sort=-v:refname")
+#     sh("git checkout #{tag}")
+
+#     # Change xcode version to one used by the project authors
+#     xcodes(version: '15.4.0', select_for_current_build_only: true)
+
+#     target = "ComposableArchitecture"
+
+#     # Query available build configurations, SDKs and destinations
+#     # sh(<<~LIST_BUILD_CONFIG)
+#     #   xcodebuild archive \
+#     #     -workspace "ComposableArchitecture.xcworkspace" \
+#     #     -list
+#     # LIST_BUILD_CONFIG
+    
+#     # -showsdks \
+#     #     -showdestinations \
+#     #     -showBuildSettings \
+#     #     -configuration Release \
+#     #     -skipPackagePluginValidation \
+#     #     -skipMacroValidation
+
+#     # 1. Archive iOS device slice
+#     # sh(<<~ARCHIVE_IOS)
+#     #   xcodebuild archive \
+#     #     -workspace "ComposableArchitecture.xcworkspace" \
+#     #     -scheme #{target} \
+#     #     -configuration Release \
+#     #     -destination "generic/platform=iOS" \
+#     #     -archivePath "./.generated/archives/ios_devices.xcarchive" \
+#     #     -parallelizeTargets \
+#     #     -skipPackagePluginValidation \
+#     #     -skipMacroValidation \
+#     #     SKIP_INSTALL=NO \
+#     #     BUILD_LIBRARY_FOR_DISTRIBUTION=YES \   
+#     # ARCHIVE_IOS
+#     # #-packagePath .
+
+#     # # # 2. Archive iOS simulator slice
+#     # sh(<<~ARCHIVE_SIMULATOR)
+#     #   xcodebuild archive \
+#     #     -workspace "ComposableArchitecture.xcworkspace" \
+#     #     -scheme #{target} \
+#     #     -configuration Release \
+#     #     -destination "generic/platform=iOS Simulator" \
+#     #     -archivePath "./.generated/archives/ios_simulators.xcarchive" \
+#     #     -parallelizeTargets \
+#     #     -skipPackagePluginValidation \
+#     #     -skipMacroValidation \
+#     #     SKIP_INSTALL=NO \
+#     #     BUILD_LIBRARY_FOR_DISTRIBUTION=YES \   
+#     # ARCHIVE_SIMULATOR
+#     # # #-packagePath .
+
+#     # # 3. Create XCFramework from the archives
+#     sh(<<~CREATE_XCF)
+#       xcodebuild -create-xcframework \
+#         -archive ./.generated/archives/ios_devices.xcarchive \
+#         -archive ./.generated/archives/ios_simulators.xcarchive \
+#         -output ./.generated/xcframeworks/ComposableArchitecture.xcframework
+#     CREATE_XCF
+#     # -framework ./.generated/archives/ios_devices.xcarchive/Products/Library/Frameworks/ComposableArchitecture.framework \
+#     # -framework ./.generated/archives/ios_simulators.xcarchive/Products/Library/Frameworks/ComposableArchitecture.framework \
+#     # 
+#     #
+    
+#     # sh("xcodebuild -workspace ComposableArchitecture.xcworkspace -list")
+
+#     #    create_xcframework(
+#     #  workspace: "#{Dir.pwd}/ComposableArchitecture.xcworkspace",
+#     #  scheme: 'ComposableArchitecture',
+#     #  #product_name: 'Sample', # optional if scheme doesnt match the name of your framework
+#     # #  destinations: ["iOS", "maccatalyst", "tvOS", "watchOS", "macOS"],
+#     # #  destinations: ["iOS"],
+#     #  destinations: ["macOS"],
+#     #  include_dSYMs: true,
+#     #  include_BCSymbolMaps: true,
+#     #  include_debug_symbols: true,
+#     #  enable_bitcode: true,
+#     #  xcframework_output_directory: "#{Dir.pwd}/../xcframework",
+#     #  remove_xcarchives: false
+#     # )
+#   end
+# end
+# 
+#
+#
+#
+#
+##	swift build \
+	#-q \
+	#-c release \
+	#--target ComposableArchitecture \
+	#-Xswiftc -emit-module-interface \
+	#-Xswiftc -enable-library-evolution
+  
+  # sh("touch #{Dir.pwd}/logs/xcodebuild.log")
+
+#     archive = %Q(xcodebuild \
+# -workspace "#{Dir.pwd}/ComposableArchitecture.xcworkspace" \
+# -scheme "ComposableArchitecture" \
+# SKIP_INSTALL=NO \
+# BUILD_LIBRARY_FOR_DISTRIBUTION=YES \
+# OTHER_CFLAGS="-fembed-bitcode -DRESILIENT_LIBRARIES -RESILIENT_LIBRARIES -RESILIENT_LIBRARIES=YES" \
+# OTHER_SWIFT_FLAGS="-Xswiftc -DRESILIENT_LIBRARIES -Xswiftc -emit-module-interface -Xswiftc -enable-library-evolution" \
+# BITCODE_GENERATION_MODE="bitcode" \
+# RESILIENT_LIBRARIES=YES \
+# ENABLE_BITCODE=YES \
+# -destination "generic/platform=iOS" \
+# -archivePath "#{Dir.pwd}/xcframework/0_ComposableArchitecture.xcarchive" \
+# archive \
+# | tee #{Dir.pwd}/logs/xcodebuild.log \
+# | xcpretty --color --simple
+# )
+
+#     sh("#{shell_setup} && #{archive}")
+#     # sh(archive)
+
+    # spm(
+    #   #command: "generate-xcodeproj", 
+    #   command: "build",
+    #   package_path:"#{Dir.pwd}",
+    #   verbose: true
+    #   )
+
+
+    # # Setup build variables
+    # workspace = "#{Dir.pwd}/ComposableArchitecture.xcworkspace"
+    # scheme = "ComposableArchitecture"
+    # archive_path = "#{Dir.pwd}/../archive/archives/ComposableArchitecture.xcarchive"
+    # log_dir = "#{ENV['HOME']}/Library/Logs/fastlane/xcbuild/#{Time.now.strftime('%Y-%m-%d')}/#{Process.pid}"
+    # build_settings = {
+    #   'SKIP_INSTALL' => 'NO',
+    #   'BUILD_LIBRARY_FOR_DISTRIBUTION' => 'YES'
+    # }
+    # destinations = ["generic/platform=iOS"]
+
+    # # Ensure log directory exists
+    # FileUtils.mkdir_p(log_dir)
+    # log_path = "#{log_dir}/xcodebuild.log"
+
+    
+
+      # # Build xcodebuild command using heredoc for better readability
+      # command = <<~COMMAND
+      #   set -o pipefail &&
+      #   xcodebuild archive
+      #     -workspace "#{workspace}"
+      #     -scheme "#{scheme}"
+      #     #{build_settings.map { |k,v| "#{k}=#{v}" }.join(" ")}
+      #     #{destinations.map { |d| "-destination \"#{d}\"" }.join(" ")}
+      #     -archivePath "#{archive_path}"
+      #     | tee "#{log_path}"
+      #     | xcpretty --color --simple
+      # COMMAND
+
+      # # Execute the command
+      # sh(command)
+
+    ##### HAS DEDICATED LOGIC
+    # create_xcframework(
+    #  workspace: "#{Dir.pwd}/ComposableArchitecture.xcworkspace",
+    #  scheme: 'ComposableArchitecture',
+    #  #product_name: 'Sample', # optional if scheme doesnt match the name of your framework
+    #  destinations: ["iOS", "maccatalyst", "tvOS", "watchOS", "macOS"],
+    #  #destinations: ["iOS"],
+    #  include_dSYMs: true,
+    #  include_BCSymbolMaps: true,
+    #  include_debug_symbols: true,
+    #  enable_bitcode: true,
+    #  xcframework_output_directory: "#{Dir.pwd}/../xcframework",
+    #  xcargs: 'RESILIENT_LIBRARIES=1',
+    #  override_xcargs: false,
+    #  remove_xcarchives: false
+    # )
+    # 
+    
+    #shell_setup = "set -o pipefail"
 
 
   # ______________________
@@ -495,338 +749,3 @@ lane :build_swift_composable_architecture do |options|
 
   #   print("pwd", Dir.pwd)
   # end
-
-end
-
-desc "Build binary for a given git URL and tag"
-lane :build_binary do |options|
-  # git_url argument is required
-  git_url = options[:git_url]
-  print("git_url", git_url)
-  UI.user_error!("git_url: missing") unless git_url
-
-  # tag argument is required
-  tag = options[:tag]
-  print("tag", tag)
-  UI.user_error!("tag: missing") unless tag
-
-  # repo_owner is required
-  repo_owner = extract_repo_owner(git_url)
-  print("repo_owner", repo_owner)
-  UI.user_error!("repo_owner: Could not extract repository owner from git URL: #{git_url}") unless repo_owner
-  
-  # repo_name is required
-  repo_name = extract_repo_name(git_url)
-  print("repo_name", repo_name)
-  UI.user_error!("repo_name: Could not extract repository name from git URL: #{git_url}") unless repo_name
-
-  temp_dir = create_temporary_directory
-  print("Created temporary directory", "#{Dir.pwd}/#{temp_dir}")
-
-  # sh("git clone #{git_url} --verbose #{temp_dir}/checkout")
-  
-  sh("pwd")
-  # sh("mkdir checkout")
-  sh("cp -r temp_dir_fastlane-2d12de14-bafd-45a5-b86a-d3ef313d1498/checkout #{temp_dir}/checkout")
-  
-  in_directory("#{temp_dir}/checkout") do
-    _ = sh("git tag -n --sort=-v:refname")
-    # latest_tag = all_tags.strip
-    # print("latest_tag", latest_tag)
-    # print("tag", tag)
-    
-    # # Verify that requested tag matches the latest tag
-    # UI.user_error!("Requested tag '#{tag}' does not match latest tag '#{latest_tag}'") unless tag == latest_tag
-    
-    sh("git checkout #{tag}")
-    sh("pwd")
-    sh("ls -al")
-
-archive = %Q(
-  xcodebuild archive \
-    -project "ComposableArchitecture.xcodeproj" \
-    -scheme "ComposableArchitecture" \
-    -configuration "Release" \
-    -destination "generic/platform=iOS" \
-    -archivePath "./build/ios_devices.xcarchive" \
-    SKIP_INSTALL=NO \
-    BUILD_LIBRARY_FOR_DISTRIBUTION=YES
-)
-
-# sh(archive)
-
-    # spm(
-    #   #command: "generate-xcodeproj", 
-    #   command: "build",
-    #   package_path:"#{Dir.pwd}",
-    #   verbose: true
-    #   )
-
-
-    # # Setup build variables
-    # workspace = "#{Dir.pwd}/ComposableArchitecture.xcworkspace"
-    # scheme = "ComposableArchitecture"
-    # archive_path = "#{Dir.pwd}/../archive/archives/ComposableArchitecture.xcarchive"
-    # log_dir = "#{ENV['HOME']}/Library/Logs/fastlane/xcbuild/#{Time.now.strftime('%Y-%m-%d')}/#{Process.pid}"
-    # build_settings = {
-    #   'SKIP_INSTALL' => 'NO',
-    #   'BUILD_LIBRARY_FOR_DISTRIBUTION' => 'YES'
-    # }
-    # destinations = ["generic/platform=iOS"]
-
-    # # Ensure log directory exists
-    # FileUtils.mkdir_p(log_dir)
-    # log_path = "#{log_dir}/xcodebuild.log"
-
-    
-
-      # # Build xcodebuild command using heredoc for better readability
-      # command = <<~COMMAND
-      #   set -o pipefail &&
-      #   xcodebuild archive
-      #     -workspace "#{workspace}"
-      #     -scheme "#{scheme}"
-      #     #{build_settings.map { |k,v| "#{k}=#{v}" }.join(" ")}
-      #     #{destinations.map { |d| "-destination \"#{d}\"" }.join(" ")}
-      #     -archivePath "#{archive_path}"
-      #     | tee "#{log_path}"
-      #     | xcpretty --color --simple
-      # COMMAND
-
-      # # Execute the command
-      # sh(command)
-
-    ##### HAS DEDICATED LOGIC
-    # create_xcframework(
-    #  workspace: "#{Dir.pwd}/ComposableArchitecture.xcworkspace",
-    #  scheme: 'ComposableArchitecture',
-    #  #product_name: 'Sample', # optional if scheme doesnt match the name of your framework
-    #  destinations: ["iOS", "maccatalyst", "tvOS", "watchOS", "macOS"],
-    #  #destinations: ["iOS"],
-    #  include_dSYMs: true,
-    #  include_BCSymbolMaps: true,
-    #  include_debug_symbols: true,
-    #  enable_bitcode: true,
-    #  xcframework_output_directory: "#{Dir.pwd}/../xcframework",
-    #  xcargs: 'RESILIENT_LIBRARIES=1',
-    #  override_xcargs: false,
-    #  remove_xcarchives: false
-    # )
-    # 
-    
-    shell_setup = "set -o pipefail"
-
-  #	swift build \
-	#-q \
-	#-c release \
-	#--target ComposableArchitecture \
-	#-Xswiftc -emit-module-interface \
-	#-Xswiftc -enable-library-evolution
-  
-  # sh("touch #{Dir.pwd}/logs/xcodebuild.log")
-
-#     archive = %Q(xcodebuild \
-# -workspace "#{Dir.pwd}/ComposableArchitecture.xcworkspace" \
-# -scheme "ComposableArchitecture" \
-# SKIP_INSTALL=NO \
-# BUILD_LIBRARY_FOR_DISTRIBUTION=YES \
-# OTHER_CFLAGS="-fembed-bitcode -DRESILIENT_LIBRARIES -RESILIENT_LIBRARIES -RESILIENT_LIBRARIES=YES" \
-# OTHER_SWIFT_FLAGS="-Xswiftc -DRESILIENT_LIBRARIES -Xswiftc -emit-module-interface -Xswiftc -enable-library-evolution" \
-# BITCODE_GENERATION_MODE="bitcode" \
-# RESILIENT_LIBRARIES=YES \
-# ENABLE_BITCODE=YES \
-# -destination "generic/platform=iOS" \
-# -archivePath "#{Dir.pwd}/xcframework/0_ComposableArchitecture.xcarchive" \
-# archive \
-# | tee #{Dir.pwd}/logs/xcodebuild.log \
-# | xcpretty --color --simple
-# )
-
-#     sh("#{shell_setup} && #{archive}")
-  end
-  
-  # Execute git operations in the repo directory
-  # in_directory(repo_name) do
-  #   sh("git clone #{git_url} --verbose --depth 1 --branch #{version} --single-branch")
-  #   sh("git checkout #{version} --verbose")
-    
-  #   # Build the project (temporarily replaced with echo)
-  #   sh("echo 'Building #{repo_name} version #{version}...'")
-  # end
-end
-
-def in_directory(directory)
-  UI.message "Changing directory to #{directory}"
-  
-  unless Dir.exist?(directory)
-    describe "Directory does not exist, running mkdir"
-    FileUtils.mkdir_p(directory)
-    UI.success "Successfully created directory: #{directory}"
-  end
-  
-  Dir.chdir(directory) do
-    UI.message "Directory changed to #{directory}"
-    yield if block_given?
-  end
-
-  UI.message "Leaving directory scope: #{directory}"
-  UI.message "Returning to previous directory"
-end
-
-def extract_repo_owner(git_url)
-  UI.message "Extracting repository owner from URL `#{git_url}`"
-  if git_url.start_with?("https://")
-    # Handle HTTPS URLs (https://github.com/owner/repo.git)
-    git_url.split("/")[-2]
-  else
-    # Handle SSH URLs (git@github.com:owner/repo.git)
-    git_url.split(":")[-1].split("/")[0]
-  end
-end
-
-def extract_repo_name(git_url)
-  UI.message "Extracting repository name from URL `#{git_url}`"
-  if git_url.start_with?("https://")
-    # Handle HTTPS URLs (https://github.com/owner/repo.git)
-    git_url.split("/")[-1].sub(".git", "")
-  else
-    # Handle SSH URLs (git@github.com:owner/repo.git)
-    git_url.split(":")[-1].split("/")[1].sub(".git", "")
-  end
-end
-
-def print(key, value)
-  UI.success "#{key}:"
-  if value.is_a?(Array)
-    value.sort.each { |v| UI.message "\t#{v}" }
-  else
-    UI.message "\t#{value}"
-  end
-end
-
-def printMissingParameter(key, options = nil)
-  UI.error "`#{key}`"
-  UI.error "`#{key}` parameter is missing or failed to calculate. Either wasn't provided in lane's |options| or it's runtime calculation failed"
-  if options
-    UI.error "Parameter should be accessible from lane's |options|, but has not been found"
-    UI.message "Available options:"
-    options.sort.each { |v| UI.message "\t#{v}" }
-  else
-    UI.error "`#{key}` is a dynamic parameter that was supposed to be calculated succesfully on runtime"
-    UI.error "Double-check parameters and lane's flow to debug the issue"
-  end
-  UI.user_error! "`#{key}` parameter is missing or failed to calculate"
-end
-
-def create_temporary_directory
-  UI.message "Creating temporary directory"
-  temp_dir = "temp_dir_#{FASTLANE_RUN_UUID}"
-  
-  print("temp_dir", temp_dir)
-  Dir.mkdir(temp_dir)
-  Dir.mkdir("#{temp_dir}/checkout")
-  Dir.mkdir("#{temp_dir}/logs")
-  Dir.mkdir("#{temp_dir}/archives")
-  Dir.mkdir("#{temp_dir}/outputs")
-  temp_dir = "./#{temp_dir}"
-
-  UI.message "Directory created: #{temp_dir}"
-  
-  return temp_dir
-end
-
-def remove_temporary_directory
-  UI.message "Removing temporary directory"
-  temp_dir = "temp_dir_#{FASTLANE_RUN_UUID}"
-  print("temp_dir", temp_dir)
-
-  # if Dir.exist?(temp_dir)
-  #   UI.success "Removing temporary directory: #{temp_dir}"
-  #   FileUtils.rm_rf(temp_dir)
-  # else
-  #   UI.message "Temporary directory does not exist: #{temp_dir}"
-  # end
-  # print("ls -al", Dir.entries(Dir.pwd))
-end
-
-def configure_xcode_instance
-  UI.message "Configuring xcode validations"
-  sh("defaults write com.apple.dt.Xcode IDESkipPackagePluginFingerprintValidatation -bool YES")
-  sh("defaults write com.apple.dt.Xcode IDESkipMacroValidation -bool YES")
-  cpu_count = Etc.nprocessors
-  sh("defaults write com.apple.dt.xcodebuild PBXNumberOfParallelBuildSubtasks #{cpu_count}")
-  sh("defaults write com.apple.dt.xcodebuild IDEBuildOperationMaxNumberOfConcurrentCompileTasks #{cpu_count}")
-  sh("defaults write com.apple.dt.Xcode PBXNumberOfParallelBuildSubtasks #{cpu_count}")
-  sh("defaults write com.apple.dt.Xcode IDEBuildOperationMaxNumberOfConcurrentCompileTasks #{cpu_count}")
-end
-
-def regex_substitute(file_path:, regex:, substitute:)
-  UI.message "Substituting content in file: #{file_path}"
-  UI.message "Regex: #{regex}"
-  UI.message "Substitute: #{substitute}"
-  contents = File.read(file_path)
-  contents = contents.gsub(regex, substitute)
-  File.write(file_path, contents)
-  UI.message "File overwritten succesfully"
-end
-
-def execute_xcodebuild_with_logs(log_path:, xcodebuild:)
-  UI.message "Executing xcodebuild"
-  UI.message "Recording output to: #{log_path}"
-  sh("touch #{log_path}")
-  sh("set -o pipefail && #{xcodebuild.split.join(" ")} | tee #{log_path} | xcpretty --color --simple")
-end
-
-def xcodebuild_archive_package(workspace:, scheme:, destination:, archive_path:, xcargs: [])
-  args = xcargs.join(' ')
-  <<~CMD
-    xcodebuild archive \
-      -workspace #{workspace} \
-      -scheme #{scheme} \
-      -configuration Release \
-      -destination "#{destination}" \
-      -archivePath "#{archive_path}" \
-      -skipPackagePluginValidation \
-      -skipMacroValidation \
-      -parallelizeTargets \
-      -showBuildTimingSummary \
-      #{args}
-      SKIP_INSTALL=NO \
-      BUILD_LIBRARY_FOR_DISTRIBUTION=YES
-  CMD
-end
-
-def xcodebuild_create_xcframework(frameworks:, archives:, output_path:)
-  framework_args = frameworks.map { |fw| "-framework #{fw}" }.join("\n")
-  archive_args = archives.map { |ar| "-archive #{ar}" }.join("\n      ")
-  args = [framework_args, archive_args].reject(&:empty?).join("\n      ")
-  <<~CMD
-    xcodebuild -create-xcframework \
-      #{args}
-      -output #{output_path}
-  CMD
-end
-
-def xcodebuild_archive_slice(slice:, workspace:, scheme:, archives_dir:, logs_dir:)
-  normalized_slice = normalize_destination_name(slice)
-  UI.message normalized_slice
-  execute_xcodebuild_with_logs(
-    log_path: "#{logs_dir}/xcodebuild_archive_#{normalized_slice}.log",
-    xcodebuild: xcodebuild_archive_package(
-      workspace: workspace,
-      scheme: scheme,
-      destination: "generic/platform=#{slice}",
-      archive_path: "#{archives_dir}/#{normalized_slice}",
-      xcargs: []
-    )
-  )
-end
-
-def normalize_destination_name(str)
-  str.downcase.gsub(/[^a-z0-9]+/, '_').gsub(/^_+|_+$/, '')
-end
-
-def describe(step)
-  UI.important ""
-  UI.important step
-end
