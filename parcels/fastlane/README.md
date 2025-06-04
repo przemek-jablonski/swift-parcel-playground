@@ -13,13 +13,21 @@ For _fastlane_ installation instructions, see [Installing _fastlane_](https://do
 
 # Available Actions
 
-### build_binary
+### clone_into_temporary_workspace
 
 ```sh
-[bundle exec] fastlane build_binary
+[bundle exec] fastlane clone_into_temporary_workspace
 ```
 
-Build binary for a given git URL and version
+
+
+### build_swift_composable_architecture
+
+```sh
+[bundle exec] fastlane build_swift_composable_architecture
+```
+
+
 
 ----
 

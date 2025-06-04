@@ -27,31 +27,14 @@ private_lane :cleanup do |options|
   remove_temporary_directory
 end
 
-lane :build_swift_composable_architecture do |options|
-  describe "Looking for the required git_url"
-  git_url = "git@github.com:pointfreeco/swift-composable-architecture.git"
-  print("git_url", git_url)
-  printMissingParameter(:git_url, options) unless git_url
+desc "Builds an .xcframework binary for provided parameters"
+lane :build_binary do |options|
+  describe "Extracting and validating inputs"
+  inputs = validate_build_binary_inputs(options)
+  git_url, tag, repo_owner, repo_name, workspace, scheme, destinations = inputs.values_at(:git_url, :tag, :repo_owner, :repo_name, :workspace, :scheme, :destinations)
 
-  describe "Looking for the required tag"
-  tag = options[:tag]
-  print("tag", tag)
-  printMissingParameter(:tag, options) unless tag
-
-  describe "Looking for the required repo_owner"
-  repo_owner = extract_repo_owner(git_url)
-  print("repo_owner", repo_owner)
-  printMissingParameter(:repo_owner) unless repo_owner
-  
-  describe "Looking for the required repo_name"
-  repo_name = extract_repo_name(git_url)
-  print("repo_name", repo_name)
-  printMissingParameter(:repo_owner) unless repo_owner
-
-  # Create a temporary directory to store the cloned repository, build artifacts, and logs
   describe "Creating a temporary directory to become a new working space"
   temp_dir = create_temporary_directory
-  # temp_dir = "#{Dir.pwd}/#{temp_dir}"
   print("temp_dir", temp_dir)
 
   in_directory(temp_dir) do
@@ -64,7 +47,7 @@ lane :build_swift_composable_architecture do |options|
     outputs_dir = "./outputs"
     
     describe "Cloning a repository"
-    sh("cp -r /Users/przemyslawjablonski/Development/swift-parcel-playground/parcels/fastlane/swift-composable-architecture/ #{checkout_dir}")
+    sh("git clone #{git_url} #{checkout_dir}")
     sh("ls -al #{checkout_dir}")
 
     describe "Checking out the requested tag"
@@ -72,7 +55,61 @@ lane :build_swift_composable_architecture do |options|
     sh("git -C #{checkout_dir} checkout #{tag}")
 
     describe "Performing repository edits..."
-  
+    options[:repository_edits].call()
+
+    describe "Archiving framework Slices..."
+    
+    workspace = options[:workspace] 
+    print(:workspace, workspace)
+
+    scheme = options[:scheme] 
+    print(:scheme, scheme)
+
+    destinations = options[:destinations] 
+    print(:destinations, destinations)
+
+    describe "Archiving Slices for destinations: #{destinations}"
+    destinations.each do |slice|
+      describe "Archiving Slice `#{slice}`"
+      xcodebuild_archive_slice(
+        slice: slice, 
+        workspace: workspace, 
+        scheme: scheme, 
+        archives_dir: archives_dir, 
+        logs_dir: logs_dir
+      )
+    end
+
+    describe "Creating XCFramework from archived slices"
+    sh("ls -al #{archives_dir}")
+
+    archives = Dir.glob("#{archives_dir}/*.xcarchive")
+    frameworks = archives.map { |archive| "#{archive}/Products/Library/Frameworks/#{scheme}.framework" }
+    dsyms = archives.map { |archive| File.absolute_path("#{archive}/dSYMs/#{scheme}.framework.dSYM") }
+
+    execute_xcodebuild_with_logs(
+      log_path: "#{logs_dir}/xcodebuild_create_xcframework.log",
+      xcodebuild: xcodebuild_create_xcframework(
+        frameworks: frameworks, 
+        archives: archives, 
+        # dsyms: dsyms,
+        dsyms: [],
+        output_path: "#{outputs_dir}/#{scheme}.xcframework"
+        )
+    )
+  end
+end
+
+desc "Builds an .xcframework binary with predefined options for ComposableArchitecture"
+lane :build_swift_composable_architecture do |options|
+  # options[:tag] = #{provide_as_command_input}
+  options[:scheme] = "ComposableArchitecture"
+  options[:workspace] = "./checkout/ComposableArchitecture.xcworkspace"
+  # options[:destinations] = ["iOS Simulator", "iOS", "iPadOS", "iPadOS Simulator" "macOS", "macOS,variant=Mac Catalyst", "tvOS", "watchOS", "watchOS Simulator"]
+  options[:destinations] = ["iOS Simulator", "iOS", "iPadOS", "iPadOS Simulator" "macOS", "macOS,variant=Mac Catalyst"]
+  options[:git_url] = "git@github.com:pointfreeco/swift-composable-architecture.git"
+  options[:repository_edits] = lambda {
+    checkout_dir = "./checkout"
     describe "Removing /Examples to prevent additional build dependencies / configuration conflicts"
     sh("rm -r #{checkout_dir}/Examples")
 
@@ -91,42 +128,36 @@ lane :build_swift_composable_architecture do |options|
     describe "Changing xcode version to one used by the project authors"
     xcodes(version: '15.4.0', select_for_current_build_only: true)
     configure_xcode_instance
+  }
 
-    describe "Archiving framework Slices..."
-    workspace = "#{checkout_dir}/ComposableArchitecture.xcworkspace"
-    scheme = "ComposableArchitecture"
-
-    # todo: for each platform
-    # # todo: dsyms
-    # todo: importants to separate def
-    slice = "iOS"
-    describe "Archiving Slice `#{slice}`"
-    xcodebuild_archive_slice(slice: slice, workspace: workspace, scheme: scheme, archives_dir: archives_dir, logs_dir: logs_dir)
-
-    slice = "iOS Simulator"
-    describe "Archiving Slice `#{slice}`"
-    xcodebuild_archive_slice(slice: slice, workspace: workspace, scheme: scheme, archives_dir: archives_dir, logs_dir: logs_dir)
-
-    slice = "macOS"
-    describe "Archiving Slice `#{slice}`"
-    xcodebuild_archive_slice(slice: slice, workspace: workspace, scheme: scheme, archives_dir: archives_dir, logs_dir: logs_dir)
-
-    slice = "macOS,variant=Mac Catalyst"
-    describe "Archiving Slice `#{slice}`"
-    xcodebuild_archive_slice(slice: slice, workspace: workspace, scheme: scheme, archives_dir: archives_dir, logs_dir: logs_dir)
-
-    describe "Creating XCFramework from archived slices"
-    sh("ls -al #{archives_dir}")
-
-    archives = Dir.glob("#{archives_dir}/*.xcarchive")
-    frameworks = archives.map { |archive| "#{archive}/Products/Library/Frameworks/#{scheme}.framework" }
-
-    execute_xcodebuild_with_logs(
-      log_path: "#{logs_dir}/xcodebuild_create_xcframework.log",
-      xcodebuild: xcodebuild_create_xcframework(frameworks: frameworks, archives: archives, output_path: "#{outputs_dir}/#{scheme}.xcframework")
-    )
-  end
+  build_binary(options)
+    #   workspace: "#{Dir.pwd}/checkout/ComposableArchitecture.xcworkspace",
+    #   scheme: scheme,
+    #   # product_name: "ComposableArchitecture",
+    #  #product_name: 'Sample', # optional if scheme doesnt match the name of your framework
+    # #  destinations: ["iOS", "maccatalyst", "tvOS", "watchOS", "macOS"],
+    #  destinations: ["iOS", "macOS"],
+    # #  destinations: ["iOS"],
+    #  include_dSYMs: true,
+    #  include_BCSymbolMaps: true,
+    #  include_debug_symbols: true,
+    #  enable_bitcode: true,
+    #  xcframework_output_directory: outputs_dir,
+    #   # xcframework_output_directory: "Products/xcframeworks",
+    #  remove_xcarchives: false,
+    #  xcargs: 'RESILIENT_LIBRARIES=YES -skipPackagePluginValidation -skipMacroValidation -parallelizeTargets -showBuildTimingSummary',
+    #  override_xcargs: false,
+    #  buildlog_path: logs_dir,
+    # )
 end
+
+#############################################################################################################
+#############################################################################################################
+#############################################################################################################
+######## --------------------------------------- HELPERS ------------------------------------------- ########
+#############################################################################################################
+#############################################################################################################
+#############################################################################################################
 
 def in_directory(directory)
   UI.message "Changing directory to #{directory}"
@@ -195,12 +226,13 @@ def create_temporary_directory
   UI.message "Creating temporary directory"
   temp_dir = "temp_dir_#{FASTLANE_RUN_UUID}"
   
-  print("temp_dir", temp_dir)
+  print(:temp_dir, temp_dir)
   Dir.mkdir(temp_dir)
   Dir.mkdir("#{temp_dir}/checkout")
   Dir.mkdir("#{temp_dir}/logs")
   Dir.mkdir("#{temp_dir}/archives")
   Dir.mkdir("#{temp_dir}/outputs")
+  Dir.mkdir("#{temp_dir}/integration")
   temp_dir = "./#{temp_dir}"
 
   UI.message "Directory created: #{temp_dir}"
@@ -211,7 +243,7 @@ end
 def remove_temporary_directory
   UI.message "Removing temporary directory"
   temp_dir = "temp_dir_#{FASTLANE_RUN_UUID}"
-  print("temp_dir", temp_dir)
+  print(:temp_dir, temp_dir)
 
   # if Dir.exist?(temp_dir)
   #   UI.success "Removing temporary directory: #{temp_dir}"
@@ -265,18 +297,10 @@ def xcodebuild_archive_package(workspace:, scheme:, destination:, archive_path:,
       -showBuildTimingSummary \
       #{args}
       SKIP_INSTALL=NO \
-      BUILD_LIBRARY_FOR_DISTRIBUTION=YES
-  CMD
-end
-
-def xcodebuild_create_xcframework(frameworks:, archives:, output_path:)
-  framework_args = frameworks.map { |fw| "-framework #{fw}" }.join("\n")
-  archive_args = archives.map { |ar| "-archive #{ar}" }.join("\n      ")
-  args = [framework_args, archive_args].reject(&:empty?).join("\n      ")
-  <<~CMD
-    xcodebuild -create-xcframework \
-      #{args}
-      -output #{output_path}
+      BUILD_LIBRARY_FOR_DISTRIBUTION=YES \
+      OTHER_CFLAGS="-fembed-bitcode" \
+      BITCODE_GENERATION_MODE="bitcode" \
+      ENABLE_BITCODE=YES
   CMD
 end
 
@@ -295,6 +319,19 @@ def xcodebuild_archive_slice(slice:, workspace:, scheme:, archives_dir:, logs_di
   )
 end
 
+def xcodebuild_create_xcframework(frameworks:, archives:, dsyms:, output_path:)
+  framework_args = frameworks.map { |fw| "-framework #{fw}" }.join("\n")
+  archive_args = archives.map { |ar| "-archive #{ar}" }.join("\n      ")
+  dsyms_args = dsyms.map { |ds| "-debug-symbols #{ds}" }.join("\n      ")
+  args = [framework_args, archive_args].reject(&:empty?).join("\n      ")
+  #, dsyms_args
+  <<~CMD
+    xcodebuild -create-xcframework \
+      #{args}
+      -output #{output_path}
+  CMD
+end
+
 def normalize_destination_name(str)
   str.downcase.gsub(/[^a-z0-9]+/, '_').gsub(/^_+|_+$/, '')
 end
@@ -304,6 +341,62 @@ def describe(step)
   UI.important step
 end
 
+
+def validate_build_binary_inputs(options)
+  print(:options, options.sort)
+
+  describe "Looking for the required `git_url` (eg. git@github.com:pointfreeco/swift-composable-architecture.git)"
+  git_url = options[:git_url]
+  print(:git_url, git_url)
+  printMissingParameter(:git_url, options) unless git_url
+
+  describe "Looking for the required `tag` (eg. 1.20.2)"
+  tag = options[:tag]
+  print(:tag, tag)
+  printMissingParameter(:tag, options) unless tag
+
+  describe "Calculating required `repo_owner` (eg. pointfreeco)"
+  repo_owner = extract_repo_owner(git_url)
+  print(:repo_owner, repo_owner)
+  printMissingParameter(:repo_owner) unless repo_owner
+  
+  describe "Calculating required `repo_name` (eg. swift-composable-architecture)"
+  repo_name = extract_repo_name(git_url)
+  print(:repo_name, repo_name)
+  printMissingParameter(:repo_name) unless repo_name
+
+  describe "Looking for the required `workspace` (eg. ./checkout/ComposableArchitecture.xcworkspace)"
+  workspace = options[:workspace]
+  print(:workspace, workspace)
+  printMissingParameter(:workspace, options) unless workspace
+
+  describe "Looking for the required `scheme` (eg. ComposableArchitecture)"
+  scheme = options[:scheme]
+  print(:scheme, scheme)
+  printMissingParameter(:scheme, options) unless scheme
+
+  # destinations = ["iOS Simulator", "iOS", "iPadOS", "iPadOS Simulator" "macOS", "macOS,variant=Mac Catalyst", "tvOS", "watchOS", "watchOS Simulator", "carPlayOS", "carPlayOS Simulator"]
+  describe "Looking for the required `destinations` (eg. [\"iOS\", \"iOS Simulator\"])"
+  destinations = options[:destinations]
+  print(:destinations, destinations)
+  printMissingParameter(:destinations, options) unless destinations
+
+  describe "Looking for the required `repository_edits` (lambda describing required edits to the repo before building. Pass empty lambda if not required, cannot be nil)"
+  repository_edits = options[:repository_edits]
+  print(:repository_edits, repository_edits)
+  printMissingParameter(:repository_edits, options) unless repository_edits
+
+  { 
+    git_url: git_url, 
+    tag: tag, 
+    repo_owner: repo_owner, 
+    repo_name: repo_name, 
+    workspace: workspace,
+    scheme: scheme, 
+    destinations: destinations, 
+    repository_edits: repository_edits
+  }
+end
 
 
 ## LEGACY _____________________________________________________________________

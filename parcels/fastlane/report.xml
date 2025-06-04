@@ -5,29 +5,172 @@
     
     
       
-      <testcase classname="fastlane.lanes" name="0: ensure_bundle_exec" time="0.000218">
+      <testcase classname="fastlane.lanes" name="00: ensure_bundle_exec" time="0.000213">
         
       </testcase>
     
       
-      <testcase classname="fastlane.lanes" name="1: Switch to create_temporary_directory lane" time="8.5e-05">
+      <testcase classname="fastlane.lanes" name="01: xcodes" time="0.086315">
         
       </testcase>
     
       
-      <testcase classname="fastlane.lanes" name="2: git clone git@github.com:pointfreeco/swift-composable-architecture.git --verbose" time="0.02117">
-        
-          <failure message="/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/gems/fastlane-2.220.0/fastlane/lib/fastlane/actions/actions_helper.rb:67:in `execute_action&apos;&#10;/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/gems/fastlane-2.220.0/fastlane/lib/fastlane/fast_file.rb:222:in `sh&apos;&#10;/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/gems/fastlane-2.220.0/fastlane/lib/fastlane/fast_file.rb:216:in `sh&apos;&#10;Fastfile:61:in `block in parsing_binding&apos;&#10;/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/gems/fastlane-2.220.0/fastlane/lib/fastlane/lane.rb:41:in `call&apos;&#10;/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/gems/fastlane-2.220.0/fastlane/lib/fastlane/runner.rb:49:in `block in execute&apos;&#10;/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/gems/fastlane-2.220.0/fastlane/lib/fastlane/runner.rb:45:in `chdir&apos;&#10;/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/gems/fastlane-2.220.0/fastlane/lib/fastlane/runner.rb:45:in `execute&apos;&#10;/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/gems/fastlane-2.220.0/fastlane/lib/fastlane/lane_manager.rb:46:in `cruise_lane&apos;&#10;/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/gems/fastlane-2.220.0/fastlane/lib/fastlane/command_line_handler.rb:34:in `handle&apos;&#10;/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/gems/fastlane-2.220.0/fastlane/lib/fastlane/commands_generator.rb:110:in `block (2 levels) in run&apos;&#10;/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/gems/commander-4.6.0/lib/commander/command.rb:187:in `call&apos;&#10;/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/gems/commander-4.6.0/lib/commander/command.rb:157:in `run&apos;&#10;/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/gems/commander-4.6.0/lib/commander/runner.rb:444:in `run_active_command&apos;&#10;/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/gems/fastlane-2.220.0/fastlane_core/lib/fastlane_core/ui/fastlane_runner.rb:124:in `run!&apos;&#10;/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/gems/commander-4.6.0/lib/commander/delegates.rb:18:in `run!&apos;&#10;/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/gems/fastlane-2.220.0/fastlane/lib/fastlane/commands_generator.rb:363:in `run&apos;&#10;/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/gems/fastlane-2.220.0/fastlane/lib/fastlane/commands_generator.rb:43:in `start&apos;&#10;/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/gems/fastlane-2.220.0/fastlane/lib/fastlane/cli_tools_distributor.rb:123:in `take_off&apos;&#10;/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/gems/fastlane-2.220.0/bin/fastlane:23:in `&lt;top (required)&gt;&apos;&#10;/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/bin/fastlane:23:in `load&apos;&#10;/Users/przemyslawjablonski/.rvm/gems/ruby-3.0.0/bin/fastlane:23:in `&lt;main&gt;&apos;&#10;&#10;Exit status of command &apos;git clone git@github.com:pointfreeco/swift-composable-architecture.git --verbose&apos; was 128 instead of 0.&#10;fatal: destination path &apos;swift-composable-architecture&apos; already exists and is not an empty directory.&#10;" />
+      <testcase classname="fastlane.lanes" name="02: defaults write com.apple.dt.Xcode IDESkipPackagePluginFingerprintValidatation -bool YES" time="0.015703">
         
       </testcase>
     
       
-      <testcase classname="fastlane.lanes" name="3: Switch to cleanup lane" time="0.000102">
+      <testcase classname="fastlane.lanes" name="03: defaults write com.apple.dt.Xcode IDESkipMacroValidation -bool YES" time="0.010606">
         
       </testcase>
     
       
-      <testcase classname="fastlane.lanes" name="4: Switch to remove_temporary_directory lane" time="6.7e-05">
+      <testcase classname="fastlane.lanes" name="04: defaults write com.apple.dt.xcodebuild PBXNumberOfParallelBuildSubtasks 10" time="0.009038">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="05: defaults write com.apple.dt.xcodebuild IDEBuildOperationMaxNumberOfConcurrentCompileTasks 10" time="0.00843">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="06: defaults write com.apple.dt.Xcode PBXNumberOfParallelBuildSubtasks 10" time="0.011018">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="07: defaults write com.apple.dt.Xcode IDEBuildOperationMaxNumberOfConcurrentCompileTasks 10" time="0.011423">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="08: pwd" time="0.004841">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="09: ls -al" time="0.007029">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="10: git clone git@github.com:pointfreeco/swift-composable-architecture.git ./checkout" time="74.891225">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="11: ls -al ./checkout" time="0.008666">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="12: git -C ./checkout tag -n --sort=-v:refname" time="0.031183">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="13: git -C ./checkout checkout 1.20.2" time="0.073336">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="14: rm -r ./checkout/Examples" time="0.04484">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="15: xcodes" time="0.047574">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="16: defaults write com.apple.dt.Xcode IDESkipPackagePluginFingerprintValidatation -bool YES" time="0.011336">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="17: defaults write com.apple.dt.Xcode IDESkipMacroValidation -bool YES" time="0.010881">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="18: defaults write com.apple.dt.xcodebuild PBXNumberOfParallelBuildSubtasks 10" time="0.008787">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="19: defaults write com.apple.dt.xcodebuild IDEBuildOperationMaxNumberOfConcurrentCompileTasks 10" time="0.00845">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="20: defaults write com.apple.dt.Xcode PBXNumberOfParallelBuildSubtasks 10" time="0.00979">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="21: defaults write com.apple.dt.Xcode IDEBuildOperationMaxNumberOfConcurrentCompileTasks 10" time="0.011166">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="22: touch ./logs/xcodebuild_archive_ios.log" time="0.005435">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="23: set -o pipefail &amp;&amp; xcodebuild archive -workspace ./checkout/ComposableArchitecture.xcworkspace -scheme ComposableArchitecture -configuration Release -destination &quot;generic/platform=iOS&quot; -archivePath &quot;./archives/ios&quot; -skipPackagePluginValidation -skipMacroValidation -parallelizeTargets -showBuildTimingSummary SKIP_INSTALL=NO BUILD_LIBRARY_FOR_DISTRIBUTION=YES OTHER_CFLAGS=&quot;-fembed-bitcode&quot; BITCODE_GENERATION_MODE=&quot;bitcode&quot; ENABLE_BITCODE=YES | tee ./logs/xcodebuild_archive_ios.log | xcpretty --color --simple" time="192.251741">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="24: touch ./logs/xcodebuild_archive_ios_simulator.log" time="0.012158">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="25: set -o pipefail &amp;&amp; xcodebuild archive -workspace ./checkout/ComposableArchitecture.xcworkspace -scheme ComposableArchitecture -configuration Release -destination &quot;generic/platform=iOS Simulator&quot; -archivePath &quot;./archives/ios_simulator&quot; -skipPackagePluginValidation -skipMacroValidation -parallelizeTargets -showBuildTimingSummary SKIP_INSTALL=NO BUILD_LIBRARY_FOR_DISTRIBUTION=YES OTHER_CFLAGS=&quot;-fembed-bitcode&quot; BITCODE_GENERATION_MODE=&quot;bitcode&quot; ENABLE_BITCODE=YES | tee ./logs/xcodebuild_archive_ios_simulator.log | xcpretty --color --simple" time="176.169225">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="26: touch ./logs/xcodebuild_archive_macos.log" time="0.005351">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="27: set -o pipefail &amp;&amp; xcodebuild archive -workspace ./checkout/ComposableArchitecture.xcworkspace -scheme ComposableArchitecture -configuration Release -destination &quot;generic/platform=macOS&quot; -archivePath &quot;./archives/macos&quot; -skipPackagePluginValidation -skipMacroValidation -parallelizeTargets -showBuildTimingSummary SKIP_INSTALL=NO BUILD_LIBRARY_FOR_DISTRIBUTION=YES OTHER_CFLAGS=&quot;-fembed-bitcode&quot; BITCODE_GENERATION_MODE=&quot;bitcode&quot; ENABLE_BITCODE=YES | tee ./logs/xcodebuild_archive_macos.log | xcpretty --color --simple" time="172.785759">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="28: touch ./logs/xcodebuild_archive_macos_variant_mac_catalyst.log" time="0.005729">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="29: set -o pipefail &amp;&amp; xcodebuild archive -workspace ./checkout/ComposableArchitecture.xcworkspace -scheme ComposableArchitecture -configuration Release -destination &quot;generic/platform=macOS,variant=Mac Catalyst&quot; -archivePath &quot;./archives/macos_variant_mac_catalyst&quot; -skipPackagePluginValidation -skipMacroValidation -parallelizeTargets -showBuildTimingSummary SKIP_INSTALL=NO BUILD_LIBRARY_FOR_DISTRIBUTION=YES OTHER_CFLAGS=&quot;-fembed-bitcode&quot; BITCODE_GENERATION_MODE=&quot;bitcode&quot; ENABLE_BITCODE=YES | tee ./logs/xcodebuild_archive_macos_variant_mac_catalyst.log | xcpretty --color --simple" time="174.478685">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="30: ls -al ./archives" time="0.015404">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="31: touch ./logs/xcodebuild_create_xcframework.log" time="0.004099">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="32: set -o pipefail &amp;&amp; xcodebuild -create-xcframework -framework ./archives/ios.xcarchive/Products/Library/Frameworks/ComposableArchitecture.framework -framework ./archives/ios_simulator.xcarchive/Products/Library/Frameworks/ComposableArchitecture.framework -framework ./archives/macos.xcarchive/Products/Library/Frameworks/ComposableArchitecture.framework -framework ./archives/macos_variant_mac_catalyst.xcarchive/Products/Library/Frameworks/ComposableArchitecture.framework -archive ./archives/ios.xcarchive -archive ./archives/ios_simulator.xcarchive -archive ./archives/macos.xcarchive -archive ./archives/macos_variant_mac_catalyst.xcarchive -output ./outputs/ComposableArchitecture.xcframework | tee ./logs/xcodebuild_create_xcframework.log | xcpretty --color --simple" time="1.074878">
+        
+      </testcase>
+    
+      
+      <testcase classname="fastlane.lanes" name="33: Switch to cleanup lane" time="0.000157">
         
       </testcase>
     
