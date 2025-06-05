@@ -1,6 +1,7 @@
 import ComposableArchitecture
 import SwiftUI
 
+//External macro implementation type 'ComposableArchitectureMacros.ReducerMacro' could not be found for macro 'Reducer()'; plugin for module 'ComposableArchitectureMacros' not found
 
 @Reducer
 struct Sheet {
