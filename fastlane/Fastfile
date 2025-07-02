@@ -3,6 +3,9 @@
 # https://github.com/unsignedapps/swift-create-xcframework
 # https://github.com/segment-integrations/swift-create-xcframework
 # https://forums.swift.org/t/macros-and-xcframeworks/68122/40
+# 
+# https://swifttoolkit.dev/posts/releasing-with-gh-actions
+# 
 
 FASTLANE_RUN_UUID = SecureRandom.uuid()
 
@@ -33,7 +36,8 @@ lane :build_swift_dependencies do |options|
   options[:git_url] ||= "git@github.com:pointfreeco/swift-dependencies.git"
   options[:scheme] ||= "Dependencies"
   options[:workspace] ||= "./checkout/Dependencies.xcworkspace"
-  options[:destinations] ||= ["iOS Simulator", "iOS", "macOS"] # fixme
+  options[:destinations] ||= ["iOS Simulator", "iOS", "macOS", "watchOS"] # fixme
+  # options[:destinations] ||= ["iOS Simulator"] # fixme
   options[:repository_edits] = lambda { |checkout_dir:|
     sh("rm -r #{checkout_dir}/Integration")
 
@@ -190,8 +194,8 @@ lane :build_binary do |options|
     # frameworks = archives.map { |archive| "#{archive}/Products/Library/Frameworks/#{scheme}.framework" }
 
     # execute_with_logs(
-    #   log_path: "./logs/xcodebuild_create_xcframework.log",
-    #   command: xcodebuild_create_xcframework(
+    #   log_path: "./logs/xcodebuild_create_dynamic_xcframework.log",
+    #   command: xcodebuild_create_dynamic_xcframework(
     #     frameworks: frameworks, 
     #     archives: archives, 
     #     dsyms: [],
@@ -234,12 +238,40 @@ def archive_framework_slices(options:)
   end
 end
 
+# Running xcodebuild "create-xcframework" - suitable for "combining" slices of `dynamic` type targets
+def bundle_framework_slices(options:, archives_dir:)
+  describe "Archiving dynamic framework slices for destinations at `#{archives_dir}`"
+  sh("ls -al #{archives_dir}")
+
+  archives = Dir.glob("#{archives_dir}/*.xcarchive")
+  print(:archives, archives)
+
+  frameworks = archives.map { |archive| "#{archive}/Products/Library/Frameworks/#{options[:scheme]}.framework" }
+  print(:frameworks, frameworks)
+
+  if frameworks.empty?
+    UI.user_error!("No frameworks found in #{archives_dir}. Aborting.")
+  end
+
+  execute_with_logs(
+    log_path: "./logs/xcodebuild_create_dynamic_xcframework.log",
+    command: xcodebuild_create_dynamic_xcframework(
+      frameworks: frameworks, 
+      archives: archives, 
+      dsyms: [],
+      output_path: "./outputs/#{options[:scheme]}.xcframework"
+    )
+  )
+end
+
 # Running xcodebuild "build" for each destination - suitable for Package targets of `static` type
 def build_library_slices(options:)
   describe "Building Slices for destinations: #{options[:destinations]}"
-  arch = "arm64" # Adjust or make dynamic if needed
+  arch = "arm64"
   configuration = "Release"
   derived_data_path = "./derived_data"
+  repo_name = options[:repo_name]
+  product_name = options[:scheme]
 
   options[:destinations].each do |slice|
     describe "Archiving Slice `#{slice}`"
@@ -257,44 +289,75 @@ def build_library_slices(options:)
         xcargs: []
       )
     )
-    # Compose the output path for the static library
-    # outputs_path = "./outputs/#{normalized_slice}"
-    # FileUtils.mkdir_p(outputs_path)
-    # library_path = "#{outputs_path}/lib#{wrapper_name}.a"
-    # Package all object files into a static library using ar
-    # sh("ar -crs \"#{library_path}\" #{derived_data_path}/Build/Intermediates.noindex/#{options[:repo_name]}.build/#{configuration}*/#{wrapper_name}.build/Objects-normal/#{arch}/Binary/*.o")
+    
+    # object_files_glob = "#{derived_data_path}/Build/Intermediates.noindex/*#{repo_name}.build/#{configuration}*/#{product_name}.build/Objects-normal/#{arch}/Binary/#{product_name}.o"
+    object_files_glob = "#{derived_data_path}/Build/Products"
+    # Copy the .o file(s) into the archive directory first
+    archive_dir = "./archives/#{normalized_slice}"
+    FileUtils.mkdir_p(archive_dir)
+    sh("cp -r #{object_files_glob} #{archive_dir}/")
+
+    # Fish out Dependencies.o and Dependencies.swiftmodule from any subfolder and copy to archive_dir
+    dependencies_o = Dir.glob("#{archive_dir}/**/#{product_name}.o").first
+    dependencies_swiftmodule = Dir.glob("#{archive_dir}/**/#{product_name}.swiftmodule").first
+    if dependencies_o.nil? || dependencies_o.empty?
+      UI.user_error!("No #{product_name}.o file found in #{archive_dir}")
+    end
+    if dependencies_swiftmodule.nil? || dependencies_swiftmodule.empty?
+      UI.user_error!("No #{product_name}.swiftmodule directory found in #{archive_dir}")
+    end
+    sh("cp \"#{dependencies_o}\" #{archive_dir}/")
+    sh("cp -R \"#{dependencies_swiftmodule}\" #{archive_dir}/")
+
+    # Fish out all .h files from derived data and copy to archive_dir
+    headers_glob = "#{derived_data_path}/Build/Intermediates.noindex/*#{repo_name}.build/#{configuration}*/#{product_name}.build/**/*.h"
+    dependencies_headers = Dir.glob(headers_glob)
+    dependencies_headers.each do |header|
+      sh("cp \"#{header}\" #{archive_dir}/")
+    end
+
+    # # Create static library from the .o file in the archive_dir
+    # static_lib_path = "#{archive_dir}/#{product_name}.a"
+    # sh("ar -crs \"#{static_lib_path}\" #{archive_dir}/#{product_name}.o")
+    sh("ls -al #{archive_dir}")
   end
 end
 
-# suitable for "combining" slices of `dynamic` type targets
-def bundle_framework_slices(options:, archives_dir:)
-  describe "Archiving dynamic framework slices for destinations at `#{archives_dir}`"
-  sh("ls -al #{archives_dir}")
-
-  archives = Dir.glob("#{archives_dir}/*.xcarchive")
-  print(:archives, archives)
-
-  frameworks = archives.map { |archive| "#{archive}/Products/Library/Frameworks/#{options[:scheme]}.framework" }
-  print(:frameworks, frameworks)
-
-  if frameworks.empty?
-    UI.user_error!("No frameworks found in #{archives_dir}. Aborting.")
+# Generates .a files then creates a static xcframework from all .a files - suitable for combining slices of static type targets
+def bundle_library_slices(options:, archives_dir:)
+  object_files = Dir.glob("#{archives_dir}/*/*.o")
+  if object_files.empty?
+    UI.user_error!("No .o files found directly in #{archives_dir}/*/. Aborting static library creation.")
   end
+
+  object_files.each do |o_file|
+    a_file = o_file.sub(/\.o$/, ".a")
+    sh("ar -crs \"#{a_file}\" \"#{o_file}\"")
+    UI.success "Created static library: #{a_file} from #{o_file}"
+  end
+
+  static_libraries = Dir.glob("#{archives_dir}/**/*.a").map { |f| File.expand_path(f) }
+  if static_libraries.empty?
+    UI.user_error!("No static libraries found in #{archives_dir}/**/*.a. Aborting static xcframework creation.")
+  end
+
+  product_name = options[:scheme]
+  static_xcframework_output = File.expand_path("./outputs/#{product_name}.xcframework")
+  UI.success "Creating static xcframework at: #{static_xcframework_output} from libraries: #{static_libraries}"
 
   execute_with_logs(
-    log_path: "./logs/xcodebuild_create_xcframework.log",
-    command: xcodebuild_create_xcframework(
-      frameworks: frameworks, 
-      archives: archives, 
+    log_path: "./logs/xcodebuild_create_static_xcframework.log",
+    command: xcodebuild_create_static_xcframework(
+      libraries: static_libraries,
       dsyms: [],
-      output_path: "./outputs/#{options[:scheme]}.xcframework"
+      output_path: static_xcframework_output
     )
   )
-end
-
-# suitable for "combining" slices of `static` type targets
-def bundle_library_slices(options:)
-  UI.user_error!("todo")
+  
+  output_dir = File.expand_path("./outputs")
+  UI.success "Static xcframework created successfully. See: \
+    #{output_dir}"
+  sh("ls -al \"#{output_dir}\"")
 end
 
 def regex_substitute(file_path:, regex:, substitute:)
@@ -357,12 +420,23 @@ def xcodebuild_archive_slice(slice:, workspace:, scheme:, archives_dir:, logs_di
   )
 end
 
-def xcodebuild_create_xcframework(frameworks:, archives:, dsyms:, output_path:)
+def xcodebuild_create_dynamic_xcframework(frameworks:, archives:, dsyms:, output_path:)
   framework_args = frameworks.map { |fw| "-framework #{fw}" }.join("\n")
   archive_args = archives.map { |ar| "-archive #{ar}" }.join("\n      ")
   _ = dsyms.map { |ds| "-debug-symbols #{ds}" }.join("\n      ")
   args = [framework_args, archive_args].reject(&:empty?).join("\n      ")
   #, dsyms_args
+  <<~CMD
+    xcodebuild -create-xcframework \
+      #{args}
+      -output #{output_path}
+  CMD
+end
+
+def xcodebuild_create_static_xcframework(libraries:, dsyms:, output_path:)
+  library_args = libraries.map { |lib| "-library #{lib}" }.join("\n")
+  # _ = dsyms.map { |ds| "-debug-symbols #{ds}" }.join("\n      ")
+  args = [library_args].reject(&:empty?).join("\n      ")
   <<~CMD
     xcodebuild -create-xcframework \
       #{args}
@@ -389,21 +463,21 @@ end
 #############################################################################################################
 
 def in_directory(directory)
-  UI.message "Changing directory to #{directory}"
+  UI.message "Changing directory to #{File.expand_path(directory)}"
   
   unless Dir.exist?(directory)
     describe "Directory does not exist, running mkdir"
     FileUtils.mkdir_p(directory)
-    UI.success "Successfully created directory: #{directory}"
+    UI.success "Successfully created directory: #{File.expand_path(directory)}"
   end
   
   Dir.chdir(directory) do
-    UI.message "Directory changed to #{directory}"
+    UI.message "Directory changed to #{File.expand_path(directory)}"
     print("pwd", Dir.pwd)
     yield if block_given?
   end
 
-  UI.message "Left directory scope: #{directory}"
+  UI.message "Left directory scope: #{File.expand_path(directory)}"
   print("pwd", Dir.pwd)
 end
 
@@ -449,7 +523,7 @@ def print(key, value)
   end
 end
 
-def printMissingParameter(key, options = nil)
+def print_missing_parameter(key, options = nil)
   UI.error "`#{key}`"
   UI.error "`#{key}` parameter is missing or failed to calculate. Either wasn't provided in lane's |options| or it's runtime calculation failed"
   if options
@@ -489,6 +563,10 @@ def normalize_destination_name(str)
   str.downcase.gsub(/[^a-z0-9]+/, '_').gsub(/^_+|_+$/, '')
 end
 
+def normalize_static_destination_name(str, arch:)
+  str.downcase.gsub(/[^a-z0-9]+/, '_').gsub(/^_+|_+$/, '')
+end
+
 def describe(step)
   UI.important ""
   UI.important step
@@ -500,63 +578,63 @@ def validate_build_binary_inputs(options)
   describe "Looking for the required `git_url` (eg. git@github.com:pointfreeco/swift-composable-architecture.git)"
   git_url = options[:git_url]
   print(:git_url, git_url)
-  printMissingParameter(:git_url, options) unless git_url
+  print_missing_parameter(:git_url, options) unless git_url
 
   describe "Looking for the required `tag` (eg. 1.20.2)"
   tag = options[:tag]
   print(:tag, tag)
-  printMissingParameter(:tag, options) unless tag
+  print_missing_parameter(:tag, options) unless tag
 
   describe "Calculating required `repo_owner` (eg. pointfreeco)"
   repo_owner = extract_repo_owner(git_url)
   print(:repo_owner, repo_owner)
-  printMissingParameter(:repo_owner) unless repo_owner
+  print_missing_parameter(:repo_owner) unless repo_owner
   
   describe "Calculating required `repo_name` (eg. swift-composable-architecture)"
   repo_name = extract_repo_name(git_url)
   print(:repo_name, repo_name)
-  printMissingParameter(:repo_name) unless repo_name
+  print_missing_parameter(:repo_name) unless repo_name
 
   describe "Looking for the required `workspace` (eg. ./checkout/ComposableArchitecture.xcworkspace)"
   workspace = options[:workspace]
   print(:workspace, workspace)
-  printMissingParameter(:workspace, options) unless workspace
+  print_missing_parameter(:workspace, options) unless workspace
 
   describe "Looking for the required `scheme` (eg. ComposableArchitecture)"
   scheme = options[:scheme]
   print(:scheme, scheme)
-  printMissingParameter(:scheme, options) unless scheme
+  print_missing_parameter(:scheme, options) unless scheme
 
   # destinations = ["iOS Simulator", "iOS", "iPadOS", "iPadOS Simulator" "macOS", "macOS,variant=Mac Catalyst", "tvOS", "watchOS", "watchOS Simulator", "carPlayOS", "carPlayOS Simulator"]
   describe "Looking for the required `destinations` (eg. [\"iOS\", \"iOS Simulator\"])"
   destinations = options[:destinations]
   print(:destinations, destinations)
-  printMissingParameter(:destinations, options) unless destinations
+  print_missing_parameter(:destinations, options) unless destinations
 
   describe "Looking for the required `xcode_version` (eg. 16.4.0)"
   xcode_version = options[:xcode_version]
   print(:xcode_version, xcode_version)
-  printMissingParameter(:xcode_version, options) unless xcode_version
+  print_missing_parameter(:xcode_version, options) unless xcode_version
 
   describe "Looking for the required `repository_edits` (lambda describing required edits to the repo before building. Pass empty lambda if not required, cannot be nil)"
   repository_edits = options[:repository_edits]
   print(:repository_edits, repository_edits)
-  printMissingParameter(:repository_edits, options) unless repository_edits
+  print_missing_parameter(:repository_edits, options) unless repository_edits
 
   describe "Looking for the required `integration_tests` (lambda describing how to perform integration tests for the built framework. Pass empty lambda if not required, cannot be nil)"
   integration_tests = options[:integration_tests]
   print(:integration_tests, integration_tests)
-  printMissingParameter(:integration_tests, options) unless integration_tests
+  print_missing_parameter(:integration_tests, options) unless integration_tests
 
   describe "Looking for the required `framework_slices_build` (lambda describing how to build framework bits for every destination. Pass empty lambda if not required, cannot be nil)"
   framework_slices_build = options[:framework_slices_build]
   print(:framework_slices_build, framework_slices_build)
-  printMissingParameter(:framework_slices_build, options) unless framework_slices_build
+  print_missing_parameter(:framework_slices_build, options) unless framework_slices_build
 
   describe "Looking for the required `framework_slices_bundle` (lambda describing how to combine all framework slices into a single .xcframework. Pass empty lambda if not required, cannot be nil)"
   framework_slices_bundle = options[:framework_slices_bundle]
   print(:framework_slices_bundle, framework_slices_bundle)
-  printMissingParameter(:framework_slices_bundle, options) unless framework_slices_bundle
+  print_missing_parameter(:framework_slices_bundle, options) unless framework_slices_bundle
 
   { 
     git_url: git_url, 
